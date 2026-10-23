@@ -1,0 +1,13 @@
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--color-bg); color: var(--color-text);
+  font-family: var(--font-body); font-size: var(--font-size-md); line-height: var(--line-height); }
+h1, h2, h3 { font-family: var(--font-heading); line-height: 1.2; }
+h1 { font-size: var(--font-size-xl); margin: 0 0 var(--space-6); }
+h2 { font-size: var(--font-size-lg); }
+a { color: var(--color-primary-dark); }
+:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.container { max-width: var(--container); margin: 0 auto; padding: var(--space-4); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip-link { position: absolute; left: var(--space-2); top: -4rem; background: var(--color-primary-dark); color: #fff; padding: var(--space-2) var(--space-4); border-radius: var(--radius); z-index: 100; }
+.skip-link:focus { top: var(--space-2); }
+.table-wrap { overflow-x: auto; }

@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function isDevinci() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@(edu\\.)?devinci\\.fr');
+    }
+    function isAdmin() { return isDevinci() && request.auth.token.admin == true; }
+
+    match /orders/{orderId} {
+      allow read: if isDevinci() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isDevinci()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status in ['draft', 'pending_review'];
+      allow update: if (isDevinci() && resource.data.userId == request.auth.uid
+        && resource.data.status in ['draft', 'pending_review']
+        && request.resource.data.status in ['draft', 'pending_review', 'cancelled']) || isAdmin();
+      allow delete: if isDevinci() && resource.data.userId == request.auth.uid
+        && resource.data.status == 'draft';
+    }
+  }
+}
