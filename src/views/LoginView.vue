@@ -1,11 +1,22 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
 import BaseButton from '../components/BaseButton.vue'
 import ContactStaffLink from '../components/ContactStaffLink.vue'
 
-const { sendLoginLink, error, message } = useAuth()
+const router = useRouter()
+// Assurez-vous de bien récupérer 'user' depuis useAuth
+const { user, sendLoginLink, error, message } = useAuth() 
 const email = ref('')
+
+// Observe les changements de l'utilisateur et redirige s'il est connecté
+watch(user, (newUser) => {
+  if (newUser) {
+    // Remplacez '/history' par le chemin réel de votre page d'historique
+    router.push('/history') 
+  }
+}, { immediate: true }) // immediate: true permet de vérifier dès le chargement de la page
 </script>
 
 <template>
@@ -25,6 +36,7 @@ const email = ref('')
 </template>
 
 <style scoped>
+/* Vos styles existants */
 .login { max-width: 32rem; margin: var(--space-8) auto; display: grid; gap: var(--space-4); }
 .auth-form { display: grid; gap: var(--space-3); }
 .auth-form input { padding: 0.5rem; font-size: 1rem; }

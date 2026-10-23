@@ -26,10 +26,14 @@ const handleEmailLink = async () => {
     try {
       const result = await signInWithEmailLink(auth, email, window.location.href)
       window.localStorage.removeItem('emailForSignIn')
+      
       if (!isAllowedEmail(result.user.email)) {
         await signOut(auth)
         error.value = 'Seuls les comptes @devinci.fr ou @edu.devinci.fr sont autorisés.'
+        return
       }
+      window.location.replace('/') 
+
     } catch {
       error.value = 'Lien de connexion invalide ou expiré.'
     }
