@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuth } from '../composables/useAuth'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuth, waitForAuth } from '../composables/useAuth'
 import { createOrder, getOrder, updateOrder } from '../composables/useOrders'
 import { PRIORITIES, SUPPLIERS, TAGS } from '../constants/orders'
 import { formatEuro, isValidUrl, parsePriceToCents } from '../utils/format'
@@ -10,8 +10,12 @@ import BaseField from '../components/BaseField.vue'
 import ContactStaffLink from '../components/ContactStaffLink.vue'
 
 const props = defineProps({ id: String })
+const route = useRoute()
 const router = useRouter()
 const { user } = useAuth()
+
+// 1. Force la récupération de l'ID via l'URL si les props ne sont pas actives
+const orderId = computed(() => props.id || route.params.id)
 
 const newItem = () => ({ key: crypto.randomUUID(), name: '', supplier: '', url: '', quantity: 1, unitPrice: '' })
 const form = reactive({ title: '', priority: 'normal', tags: [], comment: '', items: [newItem()] })
@@ -20,17 +24,33 @@ const saving = ref(false)
 const formError = ref('')
 
 onMounted(async () => {
-  if (!props.id) return
-  const o = await getOrder(props.id)
-  if (!o || o.userId !== user.value.uid || o.status !== 'draft') return router.replace({ name: 'orders' })
-  Object.assign(form, { title: o.title, priority: o.priority, tags: o.tags ?? [], comment: o.comment ?? '',
-    items: o.items.map((i) => ({ ...i, key: crypto.randomUUID(), unitPrice: (i.unitPriceCents / 100).toFixed(2).replace('.', ',') })) })
+  if (!orderId.value) return
+  
+  // 2. Attend la confirmation de l'authentification Firebase
+  await waitForAuth() 
+
+  const o = await getOrder(orderId.value)
+  // 3. Chaînage optionnel (?.) sur user.value.uid
+  if (!o || o.userId !== user.value?.uid || o.status !== 'draft') {
+    return router.replace({ name: 'orders' })
+  }
+  
+  Object.assign(form, { 
+    title: o.title, 
+    priority: o.priority, 
+    tags: o.tags ?? [], 
+    comment: o.comment ?? '',
+    items: o.items.map((i) => ({ 
+      ...i, 
+      key: crypto.randomUUID(), 
+      unitPrice: (i.unitPriceCents / 100).toFixed(2).replace('.', ',') 
+    })) 
+  })
 })
 
 const addItem = () => form.items.push(newItem())
 const removeItem = (key) => { if (form.items.length > 1) form.items = form.items.filter((i) => i.key !== key) }
 
-// Sub-orders: one per supplier, derived live from the items
 const subOrders = computed(() => {
   const map = {}
   for (const i of form.items) {
@@ -68,14 +88,18 @@ const save = async (status) => {
     items: form.items.map(({ key, unitPrice, ...i }) => ({ ...i, quantity: Number(i.quantity), unitPriceCents: parsePriceToCents(unitPrice) ?? 0 })),
     subOrders: subOrders.value.map((s) => ({ supplier: s.supplier, status, totalCents: s.totalCents })),
   }
-  try { props.id ? await updateOrder(props.id, data) : await createOrder(data); router.push({ name: 'orders' }) }
+  try { 
+    // 4. Utilisation de orderId.value à la place de props.id
+    orderId.value ? await updateOrder(orderId.value, data) : await createOrder(data) 
+    router.push({ name: 'orders' }) 
+  }
   catch { formError.value = 'Could not save the order. Please try again.' }
   finally { saving.value = false }
 }
 </script>
 <template>
   <form novalidate @submit.prevent="save('pending_review')">
-    <h1>{{ id ? 'Edit draft' : 'New order' }}</h1>
+    <h1>{{ orderId ? 'Edit draft' : 'New order' }}</h1>
     <p v-if="formError" class="alert" role="alert">{{ formError }}</p>
 
     <div class="grid">
